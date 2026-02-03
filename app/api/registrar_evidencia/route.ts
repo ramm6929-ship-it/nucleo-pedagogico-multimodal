@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { advancePFIndex, getAcreditacionState, updateEvidenciaState } from "@/app/lib/memory-store";
+import { advancePFIndex, getAcreditacionState, updateEvidenciaState, getPFIndex } from "@/app/lib/memory-store";
 import { analyzeEvidence } from "@/app/lib/vision-service";
 import { writeFile } from "fs/promises";
 import { join } from "path";
@@ -71,13 +71,16 @@ export async function POST(request: Request) {
         });
 
         // 5. CIERRE DE P.F. (SET PF INDEX)
-        // USANDO advancePFIndex por orden técnica
+        // USANDO advancePFIndex por orden técnica (Espejo Fiel)
         const result = advancePFIndex(asignatura, nivel);
 
-        // Validamos si avanzó o no si hay error
-        // NOTA: advancePFIndex retorna { newIndex, trayectoConcluido }
-        // Si necesitamos saber si falló el bloqueo MVA, el wrapper original no lo devolvía
-        // pero vamos a ajustarlo para que sea consistente.
+        if (!result.success) {
+            return NextResponse.json({
+                error: result.error,
+                success: false,
+                bloqueo_mva: true
+            }, { status: 403 });
+        }
 
         return NextResponse.json({
             success: true,

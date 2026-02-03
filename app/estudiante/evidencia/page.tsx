@@ -74,8 +74,12 @@ function EvidenciaContent() {
             formData.append("asignatura", statusUpdate?.asignatura_activa || "");
             formData.append("nivel", statusUpdate?.nivel || "");
 
-            if (evidencia?.file) {
-                formData.append("file", evidencia.file);
+            if (evidencia?.contenido instanceof File) {
+                formData.append("file", evidencia.contenido);
+            } else if (evidencia?.contenido) {
+                // Si es texto, enviamos un Blob con nombre para el análisis de visión
+                const textBlob = new Blob([evidencia.contenido], { type: "text/plain" });
+                formData.append("file", textBlob, "evidencia_texto.txt");
             }
 
             const res = await fetch("/api/registrar_evidencia", {

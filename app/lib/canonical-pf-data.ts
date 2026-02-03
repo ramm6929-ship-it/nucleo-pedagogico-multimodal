@@ -15,12 +15,19 @@ export const PF_SEQUENCE: Record<string, Record<string, string[]>> = {
 export const getCanonicalPF = (asignatura: string, nivel: string, index: number): string | null => {
     const subj = asignatura === "PM" ? "PMI" : asignatura;
     const sequence = PF_SEQUENCE[subj]?.[nivel];
-    if (!sequence) return null;
-    return sequence[index - 1] || null; // 1-based index pedagógico
+    if (!sequence) {
+        console.warn(`[DEBUG CANONICAL] No sequence for ${subj}-${nivel}`);
+        return null;
+    }
+    const val = sequence[index - 1] || null;
+    console.log(`[DEBUG CANONICAL] Subj: ${subj}, Nivel: ${nivel}, Index: ${index}, Value: ${val}`);
+    return val;
 };
 
 export const getPFCount = (asignatura: string, nivel: string): number => {
     const subj = asignatura === "PM" ? "PMI" : asignatura;
     const sequence = PF_SEQUENCE[subj]?.[nivel];
-    return sequence ? sequence.length : 0;
+    const count = sequence ? sequence.length : 0;
+    console.log(`[DEBUG PF_COUNT] Subj: ${subj}, Nivel: ${nivel}, Count: ${count}`);
+    return count;
 };

@@ -16,12 +16,19 @@ type AcademicState = {
     evidencias: EvidenceMap;
 };
 
-// SIMPLIFICACION: Variable de modulo local. Persiste en runtime del servidor.
-// Se elimina la logica 'global' para evitar crashes en HMR con estado sucio.
-export const academicStore: AcademicState = {
+// SIMPLIFICACION: Singleton Global para persistencia en DEV (HMR Safe)
+const globalForAcademic = globalThis as unknown as {
+    academicStore: AcademicState | undefined;
+};
+
+export const academicStore = globalForAcademic.academicStore ?? {
     indexes: {},
     evidencias: {}
 };
+
+if (process.env.NODE_ENV !== 'production') {
+    globalForAcademic.academicStore = academicStore;
+}
 
 const getKey = (asignatura: string) => asignatura === "PM" ? "PMI" : asignatura;
 
@@ -99,7 +106,10 @@ const _advanceCore = (asignatura: string, nivel: string) => {
     const totalPFOficiales = getPFCount(asignatura, nivel);
     const nextIndex = currentIndex + 1;
 
+    console.log(`[_advanceCore] ${asignatura}-${nivel}: current=${currentIndex}, next=${nextIndex}, total=${totalPFOficiales}`);
+
     if (nextIndex > totalPFOficiales) {
+        console.log(`[_advanceCore] TRAYECTO CONCLUIDO for ${asignatura}`);
         return { newIndex: currentIndex, trayectoConcluido: true };
     }
 
@@ -107,7 +117,7 @@ const _advanceCore = (asignatura: string, nivel: string) => {
     return { newIndex: nextIndex, trayectoConcluido: false };
 };
 
-export const attemptAdvance = (asignatura: string, nivel: string) => {
+const attemptAdvance = (asignatura: string, nivel: string) => {
     if (!isPFReadyToAcredit(asignatura, nivel)) {
         const currentIndex = getPFIndex(asignatura, nivel);
         return {
@@ -121,8 +131,7 @@ export const attemptAdvance = (asignatura: string, nivel: string) => {
     return { success: true, ...result };
 };
 
-// Legacy compatibility
+// ORDEN TÉCNICA: Función Canónica de Avance
 export const advancePFIndex = (asignatura: string, nivel: string) => {
-    const res = attemptAdvance(asignatura, nivel);
-    return { newIndex: res.newIndex, trayectoConcluido: res.trayectoConcluido };
+    return attemptAdvance(asignatura, nivel);
 };
