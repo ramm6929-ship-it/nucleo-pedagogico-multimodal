@@ -26,9 +26,7 @@ export async function POST(request: Request) {
         }
 
         // 1. Persistencia de Archivo
-        // Sanitizar nombre de archivo
-        const safeName = file.name.replace(/\s+/g, "_");
-        const filename = `evidence-${Date.now()}-${safeName}`;
+        const filename = `evidence-${Date.now()}-${file.name.replace(/\s/g, '_')}`;
         const uploadDir = join(process.cwd(), "public", "uploads");
 
         // Convertir a Buffer

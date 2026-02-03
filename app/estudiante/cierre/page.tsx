@@ -45,7 +45,7 @@ function CierreContent() {
             asignatura_activa: activeSubject as any,
             nivel: "I",
             dia_actual: 15,
-            proposito_formativo_id: "PF-CNEYT-I-01",
+            proposito_formativo_id: "CNEYT-I-PF1",
             proposito_formativo_actual: "CNEYT-I-PF1",
             proposito_formativo_siguiente: "CNEYT-I-PF2",
             evaluacion_evidencia: {

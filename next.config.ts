@@ -1,4 +1,4 @@
-// Forced RESTART for Critical Repair
+// Forced RESTART for Final Naming Unification
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
