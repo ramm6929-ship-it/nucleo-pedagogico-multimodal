@@ -1,4 +1,4 @@
-// Forced RESTART for Final Naming Unification
+// Forced RESTART for Export Repair
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {

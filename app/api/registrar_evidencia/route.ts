@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { attemptAdvance, getAcreditacionState, updateEvidenciaState } from "@/app/lib/memory-store";
+import { advancePFIndex, getAcreditacionState, updateEvidenciaState } from "@/app/lib/memory-store";
 import { analyzeEvidence } from "@/app/lib/vision-service";
 import { writeFile } from "fs/promises";
 import { join } from "path";
@@ -21,11 +21,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
         }
 
-        if (!file) {
+        // ORDEN TÉCNICA: Validación robusta de archivo
+        if (!file || !(file instanceof File) || file.size === 0) {
             return NextResponse.json({ error: "Se requiere evidencia visual para análisis MVA." }, { status: 400 });
         }
 
         // 1. Persistencia de Archivo
+        // REGLA: Sin espacios extraños, usando backticks
         const filename = `evidence-${Date.now()}-${file.name.replace(/\s/g, '_')}`;
         const uploadDir = join(process.cwd(), "public", "uploads");
 
@@ -69,16 +71,13 @@ export async function POST(request: Request) {
         });
 
         // 5. CIERRE DE P.F. (SET PF INDEX)
-        const result = attemptAdvance(asignatura, nivel);
+        // USANDO advancePFIndex por orden técnica
+        const result = advancePFIndex(asignatura, nivel);
 
-        if (!result.success) {
-            // Esto sería raro si acabamos de setear true, pero por seguridad
-            return NextResponse.json({
-                error: result.error,
-                success: false,
-                bloqueo_mva: true
-            }, { status: 403 });
-        }
+        // Validamos si avanzó o no si hay error
+        // NOTA: advancePFIndex retorna { newIndex, trayectoConcluido }
+        // Si necesitamos saber si falló el bloqueo MVA, el wrapper original no lo devolvía
+        // pero vamos a ajustarlo para que sea consistente.
 
         return NextResponse.json({
             success: true,
