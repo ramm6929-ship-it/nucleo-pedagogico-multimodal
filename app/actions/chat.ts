@@ -30,8 +30,11 @@ Recuerda que estoy aquí para guiarte, no para darte la respuesta directa.`;
     // UPDATED: StatusUpdate aligned with BFF contract and Executive Order
     const statusUpdate: StatusUpdate = {
         asignatura_activa: asignatura,
+        nivel: "I", // Default level for mock
         dia_actual: 15, // Demo value
         proposito_formativo_id: asignatura === "CNEYT" ? "PF-CNEYT-I-01" : "PF-PM-I-01",
+        proposito_formativo_actual: asignatura === "CNEYT" ? "CNEYT-I-PF1" : "PMI-I-PF1",
+        proposito_formativo_siguiente: asignatura === "CNEYT" ? "CNEYT-I-PF2" : "PMI-I-PF2",
         evaluacion_evidencia: {
             tipo: "digital",
             rubrica_version: "v1.0",

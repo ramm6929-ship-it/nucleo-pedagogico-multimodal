@@ -1,7 +1,7 @@
 "use client";
 
 import type { Asignatura } from "@/app/lib/types";
-import { BookOpen, FlaskConical, Calculator } from "lucide-react";
+import { BookOpen, FlaskConical, Calculator, Brain, Cpu } from "lucide-react";
 
 /**
  * HeaderContextual - Encabezado con contexto académico
@@ -19,13 +19,18 @@ interface HeaderContextualProps {
 const ASIGNATURA_CONFIG: Record<Asignatura, { nombre: string; icon: typeof BookOpen; color: string }> = {
     PM: {
         nombre: "Pensamiento Matemático",
-        icon: Calculator,
+        icon: Brain,
+        color: "text-blue-400",
+    },
+    PMI: {
+        nombre: "Pensamiento Matemático I",
+        icon: Brain,
         color: "text-blue-400",
     },
     CNEYT: {
-        nombre: "Ciencias Naturales, Experimentales y Tecnología",
-        icon: FlaskConical,
-        color: "text-teal-400",
+        nombre: "Cultura Digital",
+        icon: Cpu,
+        color: "text-purple-400",
     },
     FISICA: {
         nombre: "Física",

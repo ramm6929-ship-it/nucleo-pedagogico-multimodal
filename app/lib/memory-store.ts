@@ -2,7 +2,7 @@
 import { getPFCount } from "./canonical-pf-data";
 
 type LevelState = Record<string, number>;
-type ESGRState = {
+export type ESGRState = {
     e1_comprension: boolean;
     e2_aplicacion_paec: boolean;
     e3_argumentacion: boolean;
@@ -56,14 +56,36 @@ export const getAcreditacionState = (asignatura: string, nivel: string) => {
     const key = getEvidenceKey(asignatura, nivel, index);
 
     if (!academicStore.evidencias[key]) {
-        // MOCK: Init en TRUE por defecto
+        // MOCK: Init en TRUE por defecto (Cambiado a FALSE requerido por orden técnica, pero mantendremos la logica de attemptAdvance)
+        // REGLA DE ORO: Si queremos probar el flujo de visión, esto debería empezar en false si no hay historial,
+        // pero para no romper el flujo existente 'attemptAdvance' que chequea esto primero, 
+        // vamos a dejar el default y asumir que 'updateEvidenciaState' lo confirma.
+        // O MEJOR: El attemptAdvance chequea state. Si vision pasa, SETEAMOS true.
         academicStore.evidencias[key] = {
-            e1_comprension: true,
-            e2_aplicacion_paec: true,
-            e3_argumentacion: true
+            e1_comprension: false,  // Inicio Bloqueado hasta Visión
+            e2_aplicacion_paec: false,
+            e3_argumentacion: false
         };
     }
     return { evidencias_esgr: academicStore.evidencias[key] };
+};
+
+export const updateEvidenciaState = (asignatura: string, nivel: string, newState: Partial<ESGRState>) => {
+    const index = getPFIndex(asignatura, nivel);
+    const key = getEvidenceKey(asignatura, nivel, index);
+
+    if (!academicStore.evidencias[key]) {
+        academicStore.evidencias[key] = {
+            e1_comprension: false,
+            e2_aplicacion_paec: false,
+            e3_argumentacion: false
+        };
+    }
+
+    academicStore.evidencias[key] = {
+        ...academicStore.evidencias[key],
+        ...newState
+    };
 };
 
 export const isPFReadyToAcredit = (asignatura: string, nivel: string): boolean => {

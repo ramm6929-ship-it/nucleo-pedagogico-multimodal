@@ -53,7 +53,9 @@ function RecuperacionContent() {
             asignatura_activa: activeSubject as any,
             nivel: "I",
             dia_actual: 15,
-            proposito_formativo_id: `${activeSubject}-I-PF1`,
+            proposito_formativo_id: "PF-CNEYT-I-01",
+            proposito_formativo_actual: "CNEYT-I-PF1",
+            proposito_formativo_siguiente: "CNEYT-I-PF2",
             evaluacion_evidencia: {
                 tipo: "digital",
                 rubrica_version: "v1.0",

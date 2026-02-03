@@ -54,7 +54,9 @@ function SesionContent() {
             asignatura_activa: activeSubject as any,
             nivel: "I", // Inyectado desde el contexto
             dia_actual: 15,
-            proposito_formativo_id: `${activeSubject}-I-PF1`,
+            proposito_formativo_id: "PF-PM-I-01",
+            proposito_formativo_actual: "PMI-I-PF1",
+            proposito_formativo_siguiente: "PMI-I-PF2",
             evaluacion_evidencia: {
                 tipo: "digital",
                 rubrica_version: "v1.0",

@@ -69,22 +69,41 @@ function EvidenciaContent() {
     const handleSubmitEvidencia = async (evidencia: any) => {
         setIsSubmitting(true);
         try {
-            // ORDEN 3: Registrar en Backend y provocar avance de estado allá
+            // ORDEN TÉCNICA: Cambio a FormData para enviar imagen real
+            const formData = new FormData();
+            formData.append("asignatura", statusUpdate?.asignatura_activa || "");
+            formData.append("nivel", statusUpdate?.nivel || "");
+
+            if (evidencia?.file) {
+                formData.append("file", evidencia.file);
+            }
+
             const res = await fetch("/api/registrar_evidencia", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    asignatura: statusUpdate?.asignatura_activa,
-                    nivel: statusUpdate?.nivel
-                })
+                body: formData // Content-Type es automático con FormData
             });
 
-            if (!res.ok) throw new Error("Error en registro");
+            const data = await res.json();
+
+            if (!res.ok) {
+                // Manejo de Bloqueo MVA
+                if (data.bloqueo_mva) {
+                    alert(`⛔ BLOQUEO MVA DETECTADO\n\n${data.error}\n\nDiagnóstico Visión: ${data.mensaje_vision}`);
+                    console.error("MVA State:", data.evidencias_esgr);
+                    return; // No marcamos submitted
+                }
+                throw new Error(data.error || "Error en registro");
+            }
+
+            // Éxito: Mostrar feedback de visión si existe
+            if (data.mensaje_vision) {
+                console.log("Vision Feedback:", data.mensaje_vision);
+            }
 
             setSubmitted(true);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error:", error);
-            // alert("Error al registrar evidencia..."); // Opcional
+            alert(`Error técnico: ${error.message}`);
         } finally {
             setIsSubmitting(false);
         }

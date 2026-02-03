@@ -1,3 +1,4 @@
+// Forced RESTART for Critical Repair
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
