@@ -54,6 +54,7 @@ export interface StatusUpdate {
     acreditacion: Acreditacion;
 
     decision_academica: DecisionAcademica | null;
+    trayecto_concluido?: boolean;
 }
 
 // === RESPUESTA DEL BACKEND (para Server Actions) ===

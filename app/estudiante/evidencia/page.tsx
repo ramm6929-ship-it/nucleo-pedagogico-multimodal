@@ -167,7 +167,7 @@ function EvidenciaContent() {
                             onClick={handleFinalizar}
                             className="w-full py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-400 transition-all shadow-xl active:scale-95"
                         >
-                            Regresar a Dashboard
+                            {statusUpdate.trayecto_concluido ? "Finalizar Nivel" : "Siguiente PF"}
                         </button>
                     </div>
                 ) : (

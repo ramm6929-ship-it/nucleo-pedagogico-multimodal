@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { StatusUpdate, Asignatura } from "@/app/lib/types";
 import { getPFIndex, getAcreditacionState } from "@/app/lib/memory-store";
-import { getCanonicalPF } from "@/app/lib/canonical-pf-data";
+import { getCanonicalPF, getPFCount } from "@/app/lib/canonical-pf-data";
 
 /**
  * GET /api/status_update
@@ -34,12 +34,14 @@ export async function GET(request: Request) {
 
         // 1. LECTURA EN TIEMPO REAL (SSOT)
         const pfIndex = getPFIndex(asignatura, nivel);
+        const totalPFs = getPFCount(asignatura, nivel);
 
-        console.log(`[AUDIT API] Reading Status for ${asignatura}-${nivel}. Index Memory: ${pfIndex}`);
+        console.log(`[AUDIT API] Reading Status for ${asignatura}-${nivel}. Index: ${pfIndex}/${totalPFs}`);
 
         // 2. RESOLUCIÓN CANÓNICA
         const currentPF = getCanonicalPF(asignatura, nivel, pfIndex);
         const nextPF = getCanonicalPF(asignatura, nivel, pfIndex + 1);
+        const isLastPF = pfIndex >= totalPFs;
 
         // Validación de integridad
         if (!currentPF) {
@@ -78,7 +80,8 @@ export async function GET(request: Request) {
             decision_academica: {
                 resultado: RESULTADO_MAPPING["CONTINUA"],
                 accion_siguiente: nextPF ? "Continuar con la sesión de aprendizaje" : "Ciclo Concluido"
-            }
+            },
+            trayecto_concluido: isLastPF
         };
 
         return NextResponse.json(statusUpdate, { status: 200 });
