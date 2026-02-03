@@ -1,12 +1,14 @@
 "use server";
 
 import { getSystemPrompt } from "@/app/lib/nai";
-import { AIResponse } from "@/app/lib/types";
+import { AIResponse, StatusUpdate, Asignatura } from "@/app/lib/types";
 import { supabase } from '@/lib/supabaseClient'
 
-export async function processChat(userMessage: string, history: any[]): Promise<AIResponse> {
+export async function processChat(userMessage: string, history: any[], asignaturaSolicitada?: Asignatura): Promise<AIResponse> {
     // 1. Load the System Prompt (Conceptually we would send this to the LLM)
     const systemPrompt = await getSystemPrompt();
+
+    const asignatura = asignaturaSolicitada || "PM";
 
     // For now, we are MOCKING the response because we don't have an LLM connected.
     // However, we ensure the 'logic' infrastructure is ready:
@@ -14,31 +16,36 @@ export async function processChat(userMessage: string, history: any[]): Promise<
     // - We return the MANDATORY JSON structure.
 
     console.log("System Prompt Loaded length:", systemPrompt.length);
-    console.log("Processing user message:", userMessage);
+    console.log("Processing user message:", userMessage, "for subject:", asignatura);
 
     // Simulated LLM delay
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // Construct a mocked response that strictly follows the NAI output format
     const mockResponseText = `Hola. Entendido. Vamos a abordar este tema relacionado con el problema PAEC actual (Sedentarismo).
-¿Podrías explicarme con tus propias palabras qué entiendes por "función lineal" y cómo crees que se relaciona con calcular pasos diarios?
+¿Podrías explicarme con tus propias palabras qué entiendes por este concepto en el contexto de ${asignatura}?
 
 Recuerda que estoy aquí para guiarte, no para darte la respuesta directa.`;
 
-    const statusUpdate = {
-        asignatura_activa: "PM" as const, // Hardcoded for demo
-        progreso: {
-            dia_actual: 1,
-            porcentaje_logrado: "05%",
-            proposito_formativo: "Comprensión de funciones lineales",
-        },
+    // UPDATED: StatusUpdate aligned with BFF contract and Executive Order
+    const statusUpdate: StatusUpdate = {
+        asignatura_activa: asignatura,
+        dia_actual: 15, // Demo value
+        proposito_formativo_id: asignatura === "CNEYT" ? "PF-CNEYT-I-01" : "PF-PM-I-01",
         evaluacion_evidencia: {
-            tipo: "digital" as const,
-            calificacion: 0,
-            criterios_cumplidos: [],
-            comentario_portafolio: "Interacción inicial sin evidencia evaluable.",
+            tipo: "digital",
+            rubrica_version: "v1.0",
+            comentario_portafolio: "Interacción en sesión - Aislamiento verificado.",
+            validada_por_docente: false,
         },
-        portafolio_id: "",
+        acreditacion: {
+            estado_proposito: "EN_PROCESO",
+            elegible_recuperacion: false,
+        },
+        decision_academica: {
+            resultado: "AVANZA",
+            accion_siguiente: "Continuar con la sesión de aprendizaje",
+        },
     };
 
     // ================================
@@ -50,120 +57,110 @@ Recuerda que estoy aquí para guiarte, no para darte la respuesta directa.`;
     const ASIGNATURA_ID = '9ce1098d-bed2-4be9-89ea-aac7514b83c7';
     const PROPOSITO_ID = '06804c14-3451-4e50-9c63-85b42e697a39';
 
-    const status = statusUpdate;
     let sesionCreada: { id: string } | null = null;
     let portafolioId: string | undefined;
 
-    if (status?.progreso) {
-        const { dia_actual } = status.progreso;
+    const dia_actual = statusUpdate.dia_actual;
 
-        // 3️⃣ Crear sesión de aprendizaje (CORRECTO - usando UUIDs fijos)
-        const { data: sesion, error: sesionError } = await supabase
-            .from('sesiones_aprendizaje')
-            .insert({
-                estudiante_id: ESTUDIANTE_ID,
-                asignatura_id: ASIGNATURA_ID,
-                proposito_formativo_id: PROPOSITO_ID,
-                dia: dia_actual,
-                estado: 'iniciada',
-                fecha: new Date().toISOString(),
-            })
-            .select()
+    // 3️⃣ Crear sesión de aprendizaje (CORRECTO - usando UUIDs fijos)
+    const { data: sesion, error: sesionError } = await supabase
+        .from('sesiones_aprendizaje')
+        .insert({
+            estudiante_id: ESTUDIANTE_ID,
+            asignatura_id: ASIGNATURA_ID,
+            proposito_formativo_id: PROPOSITO_ID,
+            dia: dia_actual,
+            estado: 'iniciada',
+            fecha: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+    if (sesionError) {
+        console.error('Error creando sesión:', sesionError);
+    } else if (sesion) {
+        sesionCreada = sesion;
+
+        // 🔹 NAI → Supabase (Vincular Contenidos Formativos)
+        const { data: contenidos } = await supabase
+            .from('contenidos_formativos')
+            .select('id')
+            .eq('proposito_formativo_id', PROPOSITO_ID);
+
+        console.log("DEBUG LINKING:", {
+            sesionId: sesion.id,
+            contenidosCount: contenidos?.length,
+            propositoId: PROPOSITO_ID
+        });
+
+        if (contenidos && contenidos.length > 0) {
+            const relaciones = contenidos.map(c => ({
+                sesion_id: sesion.id,
+                contenido_formativo_id: c.id
+            }));
+
+            const { error: contenidosError } = await supabase
+                .from('sesion_contenidos')
+                .insert(relaciones);
+
+            if (contenidosError) {
+                console.error('Error vinculando contenidos:', contenidosError);
+            }
+        }
+    }
+
+    const evaluacion = statusUpdate.evaluacion_evidencia;
+
+    // 🔹 NAI → Supabase (Evidencia) (Solo si existe sesión)
+    if (sesionCreada) {
+        // 4️⃣ Portafolio (alineado al esquema real)
+        const { data: portafolio } = await supabase
+            .from('portafolios')
+            .select('id')
+            .eq('estudiante_id', ESTUDIANTE_ID)
             .single();
 
-        if (sesionError) {
-            console.error('Error creando sesión:', sesionError);
-        } else if (sesion) {
-            sesionCreada = sesion;
+        portafolioId = portafolio?.id;
 
-            // 🔹 NAI → Supabase (Vincular Contenidos Formativos)
-            const { data: contenidos } = await supabase
-                .from('contenidos_formativos')
-                .select('id')
-                .eq('proposito_formativo_id', PROPOSITO_ID);
-
-            console.log("DEBUG LINKING:", {
-                sesionId: sesion.id,
-                contenidosCount: contenidos?.length,
-                propositoId: PROPOSITO_ID
-            });
-
-            if (contenidos && contenidos.length > 0) {
-                const relaciones = contenidos.map(c => ({
-                    sesion_id: sesion.id,
-                    contenido_formativo_id: c.id
-                }));
-
-                const { error: contenidosError } = await supabase
-                    .from('sesion_contenidos')
-                    .insert(relaciones);
-
-                if (contenidosError) {
-                    console.error('Error vinculando contenidos:', contenidosError);
-                }
-            }
-        }
-
-        const evaluacion = statusUpdate.evaluacion_evidencia;
-
-        // 🔹 NAI → Supabase (Evidencia) (Solo si existe sesión)
-        if (sesionCreada) { // Movido dentro de la verificación de sesión
-            // 4️⃣ Portafolio (alineado al esquema real)
-            const { data: portafolio } = await supabase
+        if (!portafolioId) {
+            const { data: nuevoPortafolio, error: nuevoPortafolioError } = await supabase
                 .from('portafolios')
-                .select('id')
-                .eq('estudiante_id', ESTUDIANTE_ID)
+                .insert({ estudiante_id: ESTUDIANTE_ID })
+                .select()
                 .single();
 
-            portafolioId = portafolio?.id;
-
-            if (!portafolioId) {
-                const { data: nuevoPortafolio, error: nuevoPortafolioError } = await supabase
-                    .from('portafolios')
-                    .insert({ estudiante_id: ESTUDIANTE_ID })
-                    .select()
-                    .single();
-
-                if (nuevoPortafolioError) {
-                    console.error('Error creando portafolio:', nuevoPortafolioError);
-                } else if (nuevoPortafolio) {
-                    portafolioId = nuevoPortafolio.id;
-                }
+            if (nuevoPortafolioError) {
+                console.error('Error creando portafolio:', nuevoPortafolioError);
+            } else if (nuevoPortafolio) {
+                portafolioId = nuevoPortafolio.id;
             }
+        }
 
-            // 5️⃣ Evidencia (solo si existe sesión y evaluación)
-            // Note: statusUpdate always sends evaluacion_evidencia according to current code logic, 
-            // but we check if it is populated/meaningful if needed. The prompt snippet implies we should just insert.
+        // 5️⃣ Evidencia (solo si existe sesión y evaluación)
+        if (portafolioId && evaluacion) {
+            const { error: evidenciaError } = await supabase
+                .from('evidencias')
+                .insert({
+                    portafolio_id: portafolioId,
+                    sesion_id: sesionCreada.id,
+                    tipo: evaluacion.tipo,
+                    retroalimentacion: evaluacion.comentario_portafolio,
+                });
 
-            if (portafolioId && evaluacion) {
-                const { error: evidenciaError } = await supabase
-                    .from('evidencias')
-                    .insert({
-                        portafolio_id: portafolioId,
-                        sesion_id: sesionCreada.id,
-                        tipo: evaluacion.tipo,
-                        calificacion: evaluacion.calificacion,
-                        criterios_cumplidos: evaluacion.criterios_cumplidos,
-                        retroalimentacion: evaluacion.comentario_portafolio, // FIXED: Mapped to correct column
-                    });
-
-                if (evidenciaError) {
-                    console.error('Error creando evidencia:', evidenciaError);
-                } else {
-                    // 6️⃣ Actualizar estado de sesión
-                    await supabase
-                        .from('sesiones_aprendizaje')
-                        .update({ estado: 'completada' })
-                        .eq('id', sesionCreada.id);
-                }
+            if (evidenciaError) {
+                console.error('Error creando evidencia:', evidenciaError);
+            } else {
+                // 6️⃣ Actualizar estado de sesión
+                await supabase
+                    .from('sesiones_aprendizaje')
+                    .update({ estado: 'completada' })
+                    .eq('id', sesionCreada.id);
             }
         }
     }
 
-    // Update response with the potentially created/found IDs if needed or just return standard structure
-    if (portafolioId) {
-        statusUpdate.portafolio_id = portafolioId;
-    }
+    // NOTE: portafolio_id is NOT part of StatusUpdate contract
+    // The ID is persisted in Supabase but not exposed to Frontend
 
     // ================================
     // ✅ RESPUESTA FINAL OBLIGATORIA
@@ -174,4 +171,3 @@ Recuerda que estoy aquí para guiarte, no para darte la respuesta directa.`;
         status_update: statusUpdate,
     };
 }
-

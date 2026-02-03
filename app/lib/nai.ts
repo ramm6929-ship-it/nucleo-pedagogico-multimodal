@@ -1,13 +1,14 @@
-import { readFile } from "fs/promises";
-import { join } from "path";
+import { SYSTEM_PROMPT } from "./system-prompt";
+
+/**
+ * NAI Core Interface
+ * 
+ * Centraliza la carga del System Prompt para asegurar consistencia 
+ * arquitectónica entre la capa técnica y pedagógica.
+ */
 
 export async function getSystemPrompt(): Promise<string> {
-    try {
-        const promptPath = join(process.cwd(), "docs", "prompts", "system_prompt_MAT-IA_v1.0.md");
-        const promptContent = await readFile(promptPath, "utf-8");
-        return promptContent;
-    } catch (error) {
-        console.error("Error loading system prompt:", error);
-        throw new Error("Failed to load NAI system prompt");
-    }
+    // Retorna directamente la constante exportada desde la capa técnica (ASCII-only)
+    // Esto asegura que cualquier sanitización impacte a todo el sistema.
+    return SYSTEM_PROMPT;
 }
