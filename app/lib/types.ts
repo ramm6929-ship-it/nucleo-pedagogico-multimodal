@@ -24,12 +24,13 @@ export interface Acreditacion {
     estado_proposito: EstadoProposito;
     elegible_recuperacion: boolean;
     // NUEVO: Rastreo de evidencias ESGR (ORDEN EJECUTIVA MVA)
-    evidencias_esgr: {
+    // Optional to prevent build break on existing mocks
+    evidencias_esgr?: {
         e1_comprension: boolean;
         e2_aplicacion_paec: boolean;
         e3_argumentacion: boolean;
     };
-    intentos_realizados: number;
+    intentos_realizados?: number;
 }
 
 export interface DecisionAcademica {
