@@ -57,7 +57,7 @@ export async function processChat(
 
         // 4. INVOCACIÓN A GEMINI 1.5 PRO (Modo JSON)
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            model: "gemini-2.5-flash",
             systemInstruction: fullSystemInstruction,
             generationConfig: {
                 temperature: 0.1,
