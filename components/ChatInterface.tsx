@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useEffect, useState, useRef } from "react";
 import { Send, Image as ImageIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AIResponse } from "@/app/lib/types";
@@ -14,15 +15,46 @@ interface Message {
 }
 
 export function ChatInterface() {
+    // 1. ESTADOS (Usuario, Mensajes, UI)
+    const [user, setUser] = useState<any>(null); // Estado para guardar al usuario autenticado
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    // Cliente Supabase para Frontend
+    const supabase = createClientComponentClient();
+
+    // 2. EFECTO DE AUTENTICACIÓN (Carga el ID Real al iniciar)
+    useEffect(() => {
+        const getUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                setUser(user);
+                console.log("✅ Usuario autenticado en chat:", user.id);
+            }
+        };
+        getUser();
+    }, [supabase]);
+
+    // 3. AUTO-SCROLL
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [messages]);
+
+    // 4. MANEJO DEL ENVÍO
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim() || isLoading) return;
 
+        // Validaciones de seguridad: No enviar si carga, vacío o SIN USUARIO
+        if (!input.trim() || isLoading || !user) {
+            if (!user) console.error("⚠️ Intento de envío sin usuario autenticado");
+            return;
+        }
+
+        // Mensaje optimista (se muestra inmediatamente)
         const userMessage: Message = {
             id: Date.now().toString(),
             role: "user",
@@ -35,33 +67,39 @@ export function ChatInterface() {
         setIsLoading(true);
 
         try {
-            const response: AIResponse = await processChat(input, messages);
+            // --- LLAMADA AL NÚCLEO (PRODUCCIÓN) ---
+            // Enviamos: 1. Texto, 2. ID Real, 3. Asignatura
+            const response: AIResponse = await processChat(
+                userMessage.content,
+                user.id,
+                "PM" // <--- Aquí defines la asignatura. Si tienes un selector, pasa esa variable.
+            );
 
             const aiMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
-                content: response.answer || "Respuesta procesada.", // Accessing the text part
+                content: response.answer || "Respuesta procesada.",
                 timestamp: new Date(),
             };
 
             setMessages((prev) => [...prev, aiMessage]);
 
-            // Log the status update for debugging/verification of NAI logic
-            console.log("NAI Status Update:", response.status_update);
+            // Log para verificar que el JSON del NAI llega bien
+            console.log("🤖 NAI Status Update:", response.status_update);
 
         } catch (error) {
-            console.error("Error processing chat:", error);
-            // Optionally add error message to chat
+            console.error("❌ Error processing chat:", error);
+            // Feedback visual de error
+            setMessages((prev) => [...prev, {
+                id: Date.now().toString(),
+                role: "assistant",
+                content: "⚠️ Lo siento, hubo un problema de conexión con el Núcleo Pedagógico. Inténtalo de nuevo.",
+                timestamp: new Date()
+            }]);
         } finally {
             setIsLoading(false);
         }
     };
-
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-    }, [messages]);
 
     return (
         <div className="flex flex-col h-[calc(100vh-4rem)]">
@@ -69,7 +107,9 @@ export function ChatInterface() {
                 {messages.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-full text-slate-400">
                         <p className="text-lg font-medium">Bienvenido al NÚCLEO PEDAGÓGICO MULTIMODAL</p>
-                        <p className="text-sm">Selecciona una asignatura o inicia la conversación.</p>
+                        <p className="text-sm">
+                            {user ? "Selecciona una asignatura o inicia la conversación." : "Cargando perfil..."}
+                        </p>
                     </div>
                 )}
                 {messages.map((message) => (
@@ -115,11 +155,11 @@ export function ChatInterface() {
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Escribe tu respuesta o duda..."
                         className="flex-1 min-w-0 rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-                        disabled={isLoading}
+                        disabled={isLoading || !user}
                     />
                     <button
                         type="submit"
-                        disabled={isLoading || !input.trim()}
+                        disabled={isLoading || !input.trim() || !user}
                         className="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         <Send className="h-4 w-4" />
