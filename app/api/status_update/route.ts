@@ -52,8 +52,36 @@ export async function GET(request: Request) {
 
         // 3. ESTADO DE ACREDITACIÓN (MVA/ESGR)
         const acreditacionState = getAcreditacionState(asignatura, nivel);
+        const { e1_comprension, e2_aplicacion_paec, e3_argumentacion } = acreditacionState.evidencias_esgr;
 
-        // 4. CONSTRUCCIÓN DE RESPUESTA
+        // Determinar Estado del Propósito
+        const isLogrado = e1_comprension && e2_aplicacion_paec && e3_argumentacion;
+        const estadoProposito: "NO_INICIADO" | "EN_PROCESO" | "LOGRADO" = isLogrado
+            ? "LOGRADO"
+            : "EN_PROCESO"; // Podría ser NO_INICIADO si no hay intentos, pero dejaremos EN_PROCESO por defecto si ya entró
+
+        // 4. LOGICA DE DECISIÓN ACADÉMICA (Motor de Decisiones)
+        let decision: "AVANZA" | "RECUPERACION" | "BLOQUEADO" | "ACREDITA_NIVEL" = "AVANZA";
+        let accionSiguiente = "Continuar con la sesión de aprendizaje";
+
+        // Si está logrado, la acción es avanzar al siguiente PF
+        if (isLogrado) {
+            if (isLastPF) {
+                decision = "ACREDITA_NIVEL";
+                accionSiguiente = "Nivel Completo: Descargar Certificado";
+            } else {
+                decision = "AVANZA"; // Avanza al siguiente PF
+                accionSiguiente = "Iniciar Siguiente Propósito Formativo";
+            }
+        } else {
+            // Si NO está logrado
+            // Lógica de Bloqueo/Recuperación (Placeholder normativa)
+            // Por ahora, si no está logrado, CONTINUA (AVANZA en la sesión actual)
+            decision = "AVANZA";
+            accionSiguiente = "Continuar con la sesión de aprendizaje";
+        }
+
+        // 5. CONSTRUCCIÓN DE RESPUESTA
         const statusUpdate: StatusUpdate = {
             asignatura_activa: asignatura,
             nivel: nivel,
@@ -66,22 +94,22 @@ export async function GET(request: Request) {
             evaluacion_evidencia: {
                 tipo: "digital",
                 rubrica_version: "v1.0",
-                comentario_portafolio: "Esperando evidencia normativa.",
-                validada_por_docente: false
+                comentario_portafolio: isLogrado ? "Propósito Acreditado" : "Esperando evidencia normativa.",
+                validada_por_docente: isLogrado
             },
 
             acreditacion: {
-                estado_proposito: ESTADO_MAPPING["EN_PROCESO"],
+                estado_proposito: ESTADO_MAPPING[estadoProposito],
                 elegible_recuperacion: false,
                 evidencias_esgr: acreditacionState.evidencias_esgr,
                 intentos_realizados: 0
             },
 
             decision_academica: {
-                resultado: RESULTADO_MAPPING["CONTINUA"],
-                accion_siguiente: nextPF ? "Continuar con la sesión de aprendizaje" : "Ciclo Concluido"
+                resultado: RESULTADO_MAPPING[decision === "AVANZA" ? "CONTINUA" : decision] || decision,
+                accion_siguiente: accionSiguiente
             },
-            trayecto_concluido: isLastPF
+            trayecto_concluido: isLogrado && isLastPF
         };
 
         return NextResponse.json(statusUpdate, { status: 200 });
