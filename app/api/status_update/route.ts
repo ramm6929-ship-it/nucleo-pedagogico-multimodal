@@ -59,7 +59,7 @@ export async function GET(request: Request) {
         const isLogrado = e1_comprension && e2_aplicacion_paec && e3_argumentacion;
         const estadoProposito: "NO_INICIADO" | "EN_PROCESO" | "LOGRADO" = isLogrado
             ? "LOGRADO"
-            : (e1_comprension || e2_aplicacion_paec || e3_argumentacion ? "EN_PROCESO" : "NO_INICIADO");
+            : "EN_PROCESO";
 
         // 4. LOGICA DE DECISIÓN ACADÉMICA (Motor de Decisiones)
         let decision: "AVANZA" | "RECUPERACION" | "BLOQUEADO" | "ACREDITA_NIVEL" = "AVANZA";

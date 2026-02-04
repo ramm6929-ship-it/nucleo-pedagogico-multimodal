@@ -10,7 +10,10 @@ export const PF_SEQUENCE: Record<string, Record<string, string[]>> = {
         VI: ["PMI-VI-PF1", "PMI-VI-PF2", "PMI-VI-PF3", "PMI-VI-PF4", "PMI-VI-PF5", "PMI-VI-PF6", "PMI-VI-PF7", "PMI-VI-PF8"]
     },
     CNEYT: {
-        I: ["CNEYT-I-PF1", "CNEYT-I-PF2", "CNEYT-I-PF3"],
+        I: [
+            "CNEYT-I-PF1", "CNEYT-I-PF2", "CNEYT-I-PF3", "CNEYT-I-PF4",
+            "CNEYT-I-PF5", "CNEYT-I-PF6", "CNEYT-I-PF7", "CNEYT-I-PF8"
+        ],
         II: ["CNEYT-II-PF1", "CNEYT-II-PF2", "CNEYT-II-PF3", "CNEYT-II-PF4"]
     }
 };
