@@ -3,7 +3,7 @@
 import { getSystemPrompt } from "@/app/lib/nai";
 import { AIResponse, StatusUpdate, Asignatura } from "@/app/lib/types";
 import { createClient } from "@supabase/supabase-js";
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai"; // Importamos SchemaType
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // 1. CONFIGURACIÓN
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -21,7 +21,7 @@ export async function processChat(
     try {
         console.log(`🚀 [NAI] Iniciando ciclo para usuario: ${userId}`);
 
-        // 2. RECUPERAR DATOS (MEMORIA)
+        // 2. RECUPERAR DATOS
         const { data: estadoActual } = await supabase
             .from('avance_curricular')
             .select('*')
@@ -35,28 +35,28 @@ export async function processChat(
             historial: estadoActual?.pf_acreditados || []
         };
 
-        // 3. PROMPT REFORZADO (SOLUCIÓN DE RAÍZ AL MODELO)
+        // 3. PROMPT CON "PARCHE ANTI-BLOQUEO"
         const basePrompt = await getSystemPrompt();
 
         const fullSystemInstruction = `
         ${basePrompt}
 
-        === CONTEXTO OBLIGATORIO DEL ESTUDIANTE ===
+        === CONTEXTO DEL ESTUDIANTE ===
         ID: ${userId}
         Asignatura: ${asignaturaSolicitada}
-        Día: ${contexto.dia}
         PF Activo: ${contexto.pf_actual}
         Historial: ${JSON.stringify(contexto.historial)}
-        ===========================================
+        ===============================
         
-        !!! REGLA DE INTEGRIDAD DE DATOS (CRÍTICA) !!!
-        Tu salida DEBE ser un JSON completo.
-        Es OBLIGATORIO incluir el objeto "acreditacion" con el campo "estado_proposito".
-        Si el estudiante no ha logrado el propósito, define "estado_proposito": "EN_PROCESO".
-        NUNCA omitas este campo. Romperás el sistema.
+        !!! INSTRUCCIONES DE CONTROL DE FLUJO (PRIORITARIAS) !!!
+        1. Tu respuesta DEBE ser un JSON válido (StatusUpdate).
+        2. REGLA DE SESIÓN ACTIVA: Si el estudiante está trabajando en el Propósito Formativo actual, el estado es "CONTINUA".
+        3. NO uses "BLOQUEADO" para sesiones normales. "BLOQUEADO" es EXCLUSIVO para intentos de saltar a un Nivel superior sin acreditar el anterior.
+        4. Si es el primer mensaje ("Hola"), responde con bienvenida y estado "CONTINUA".
+        5. Es OBLIGATORIO incluir el objeto "acreditacion".
         `;
 
-        // 4. INVOCACIÓN GEMINI 2.5 FLASH (CEREBRO)
+        // 4. INVOCACIÓN GEMINI 2.5 FLASH
         const model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash",
             systemInstruction: fullSystemInstruction,
@@ -69,22 +69,24 @@ export async function processChat(
         const result = await model.generateContent(userMessage);
         const responseText = result.response.text();
 
-        // 5. PARSEO (LECTURA)
+        // 5. PARSEO
         let statusUpdate: StatusUpdate;
         try {
             statusUpdate = JSON.parse(responseText);
+            // --- LOG CRÍTICO: VER EL CEREBRO DE LA IA ---
+            console.log("🧠 NAI DECISIÓN (JSON):", JSON.stringify(statusUpdate.decision_academica));
+            // -------------------------------------------
         } catch (e) {
             console.error("🔥 Error JSON Gemini:", responseText);
             throw new Error("Error de Integridad: La IA no entregó un formato válido.");
         }
 
-        // Recuperar texto conversacional
         const textoRespuesta = (statusUpdate as any).mensaje_usuario ||
             (statusUpdate as any).comentario_pedagogico ||
             statusUpdate.decision_academica?.accion_siguiente ||
             "Continúa con la actividad.";
 
-        // 6. PERSISTENCIA (GUARDADO)
+        // 6. PERSISTENCIA
 
         // A) Sesión
         const { data: sesion } = await supabase
@@ -122,12 +124,7 @@ export async function processChat(
             }
         }
 
-        // C) Actualización Curricular (CON DEFENSA STRICTA)
-        // Aquí respetamos tu filosofía:
-        // Si el modelo trae el dato, lo usamos.
-        // Si el modelo FALLÓ (undefined), asumimos "EN_PROCESO" (No Logrado).
-        // JAMÁS asumimos "LOGRADO" si no está explícito.
-
+        // C) Actualización Curricular
         const estadoLogro = statusUpdate.acreditacion?.estado_proposito || "EN_PROCESO";
         const pfActual = statusUpdate.proposito_formativo_actual || contexto.pf_actual;
 
@@ -151,7 +148,6 @@ export async function processChat(
 
     } catch (error: any) {
         console.error("❌ Error processChat:", error);
-        // Fallback de emergencia solo para no dejar al usuario colgado
         return {
             answer: "Error de conexión con el Núcleo. Intenta de nuevo.",
             status_update: {
