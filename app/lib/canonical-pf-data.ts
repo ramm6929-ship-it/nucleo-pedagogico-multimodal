@@ -2,9 +2,12 @@
 
 export const PF_SEQUENCE: Record<string, Record<string, string[]>> = {
     PMI: {
-        I: ["PMI-I-PF1", "PMI-I-PF2", "PMI-I-PF3", "PMI-I-PF4"],
-        II: ["PMI-II-PF1", "PMI-II-PF2", "PMI-II-PF3"],
-        III: ["PMI-III-PF1", "PMI-III-PF2", "PMI-III-PF3", "PMI-III-PF4", "PMI-III-PF5"]
+        I: ["PMI-I-PF1", "PMI-I-PF2", "PMI-I-PF3", "PMI-I-PF4", "PMI-I-PF5", "PMI-I-PF6", "PMI-I-PF7"],
+        II: ["PMI-II-PF1", "PMI-II-PF2", "PMI-II-PF3", "PMI-II-PF4", "PMI-II-PF5"],
+        III: ["PMI-III-PF1", "PMI-III-PF2", "PMI-III-PF3", "PMI-III-PF4", "PMI-III-PF5", "PMI-III-PF6"],
+        IV: ["PMI-IV-PF1", "PMI-IV-PF2", "PMI-IV-PF3", "PMI-IV-PF4", "PMI-IV-PF5", "PMI-IV-PF6", "PMI-IV-PF7"],
+        V: ["PMI-V-PF1", "PMI-V-PF2", "PMI-V-PF3", "PMI-V-PF4", "PMI-V-PF5", "PMI-V-PF6", "PMI-V-PF7", "PMI-V-PF8"],
+        VI: ["PMI-VI-PF1", "PMI-VI-PF2", "PMI-VI-PF3", "PMI-VI-PF4", "PMI-VI-PF5", "PMI-VI-PF6", "PMI-VI-PF7", "PMI-VI-PF8"]
     },
     CNEYT: {
         I: ["CNEYT-I-PF1", "CNEYT-I-PF2", "CNEYT-I-PF3"],

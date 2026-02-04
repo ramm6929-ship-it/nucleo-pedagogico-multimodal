@@ -135,3 +135,12 @@ const attemptAdvance = (asignatura: string, nivel: string) => {
 export const advancePFIndex = (asignatura: string, nivel: string) => {
     return attemptAdvance(asignatura, nivel);
 };
+
+export const resetAcademicState = (asignatura: string, nivel: string) => {
+    const subjKey = getKey(asignatura);
+    if (academicStore.indexes[subjKey]) {
+        academicStore.indexes[subjKey][nivel] = 1;
+        console.log(`[RESET] Estado académico reiniciado para ${asignatura}-${nivel}`);
+    }
+    // También podríamos limpiar evidencias si fuera necesario, pero por ahora solo el índice es crítico.
+};

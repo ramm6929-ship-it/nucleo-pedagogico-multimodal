@@ -7,62 +7,60 @@ import { join } from "path";
 /**
  * POST /api/registrar_evidencia
  * 
- * ORDEN TÉCNICA: ACTIVACIÓN DE ANÁLISIS ÓPTICO Y CIERRE DE PF
+ * ORDEN TÉCNICA: SANEAMIENTO ESTRUCTURAL (SIN HTML)
+ * Garantiza respuestas JSON estrictas en todos los casos.
  */
 
 export async function POST(request: Request) {
+    // Wrapper global de seguridad para atrapar cualquier error no controlado y forzar JSON
     try {
         const formData = await request.formData();
         const asignatura = formData.get("asignatura") as string;
         const nivel = formData.get("nivel") as string;
         const file = formData.get("file") as File | null;
 
+        // 1. Validación de Entrada (Strict JSON on error)
         if (!asignatura || !nivel) {
-            return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
+            return NextResponse.json({ success: false, error: "Datos incompletos: asignatura o nivel faltantes." }, { status: 400 });
         }
 
-        // ORDEN TÉCNICA: Validación robusta de archivo
         if (!file || !(file instanceof File) || file.size === 0) {
-            return NextResponse.json({ error: "Se requiere evidencia visual para análisis MVA." }, { status: 400 });
+            return NextResponse.json({ success: false, error: "Se requiere evidencia visual válida para análisis MVA." }, { status: 400 });
         }
 
-        // 1. Persistencia de Archivo
-        // REGLA: Sin espacios extraños, usando backticks
-        const filename = `evidence-${Date.now()}-${file.name.replace(/\s/g, '_')}`;
+        // 2. Persistencia de Archivo (Sin exponer detalles de sistema en error)
+        const filename = `evidence-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`; // Sanitización estricta de nombre
         const uploadDir = join(process.cwd(), "public", "uploads");
 
-        // Convertir a Buffer
+        try {
+            const bytes = await file.arrayBuffer();
+            const buffer = Buffer.from(bytes);
+            await writeFile(join(uploadDir, filename), buffer);
+        } catch (err: any) {
+            console.error("[UPLOAD CRITICAL] Error saving file:", err.message);
+            // No bloqueamos el flujo pedagógico por error de disco secundario, pero logueamos
+        }
+
+        // 3. Análisis MVA (Vision Service)
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        try {
-            await writeFile(join(uploadDir, filename), buffer);
-        } catch (err) {
-            console.error("[UPLOAD WARN] Could not save to disk, proceeding with memory buffer.", err);
-        }
-
-        // 2. INVOCACIÓN DE MODELO DE VISIÓN (ORDEN TÉCNICA)
-        console.log(`[VISION AI] Invoking Optical Analysis for ${asignatura}...`);
+        console.log(`[VISION AI] Analyzing for ${asignatura}...`);
         const visionResult = await analyzeEvidence(buffer, file.name, asignatura);
 
-        // 3. VALIDACIÓN DE CRITERIO NORMATIVO
         if (!visionResult.success) {
-            console.warn(`[VISION AI] REJECTED: ${visionResult.feedback_normativo}`);
-
             return NextResponse.json({
                 success: false,
                 bloqueo_mva: true,
                 error: "Evidencia rechazada por Criterio Normativo.",
                 mensaje_vision: visionResult.feedback_normativo,
                 detalles_opticos: visionResult.detected_elements,
-                // Estado actual (sin cambios)
                 evidencias_esgr: getAcreditacionState(asignatura, nivel).evidencias_esgr
-            }, { status: 403 });
+            }, { status: 403 }); // Forbidden por normativa
         }
 
-        // 4. PERSISTENCIA EN STORE (REGLA DE ORO)
-        // Si la visión aprueba, actualizamos el estado de evidencias a CUMPLIDO.
-        console.log(`[VISION AI] SUCCESS: ${visionResult.description}`);
+        // 4. Actualización de Estado (Atomic Operation)
+        console.log(`[VISION AI] SUCCESS. Updating store...`);
 
         updateEvidenciaState(asignatura, nivel, {
             e1_comprension: true,
@@ -70,18 +68,17 @@ export async function POST(request: Request) {
             e3_argumentacion: true
         });
 
-        // 5. CIERRE DE P.F. (SET PF INDEX)
-        // USANDO advancePFIndex por orden técnica (Espejo Fiel)
         const result = advancePFIndex(asignatura, nivel);
 
         if (!result.success) {
             return NextResponse.json({
-                error: result.error,
                 success: false,
-                bloqueo_mva: true
+                bloqueo_mva: true,
+                error: result.error || "Error al avanzar índice académico."
             }, { status: 403 });
         }
 
+        // 5. Respuesta Exitosa Canonical
         return NextResponse.json({
             success: true,
             mensaje: result.trayectoConcluido ? "Trayecto Concluido" : "Evidencia Acreditada por Visión Artificial.",
@@ -93,7 +90,12 @@ export async function POST(request: Request) {
         });
 
     } catch (e: any) {
-        console.error(e);
-        return NextResponse.json({ error: "Error interno: " + e.message }, { status: 500 });
+        console.error("[API FATAL]", e);
+        // GARANTÍA DE CERO HTML: Siempre devolvemos JSON
+        return NextResponse.json({
+            success: false,
+            error: "Error Interno del Servidor (Protocolo de Seguridad).",
+            details: process.env.NODE_ENV === 'development' ? e.message : undefined
+        }, { status: 500 });
     }
 }
