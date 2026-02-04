@@ -1,6 +1,6 @@
 "use client";
 
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@supabase/supabase-js";
 import { useEffect, useState, useRef } from "react";
 import { Send, Image as ImageIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,10 @@ export function ChatInterface() {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Cliente Supabase para Frontend
-    const supabase = createClientComponentClient();
+    const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
 
     // 2. EFECTO DE AUTENTICACIÓN (Carga el ID Real al iniciar)
     useEffect(() => {
