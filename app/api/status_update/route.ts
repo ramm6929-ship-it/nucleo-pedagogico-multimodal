@@ -18,6 +18,7 @@ const RESULTADO_MAPPING: Record<string, "AVANZA" | "RECUPERACION" | "BLOQUEADO" 
 };
 
 const ESTADO_MAPPING: Record<string, "NO_INICIADO" | "EN_PROCESO" | "LOGRADO"> = {
+    "NO_INICIADO": "NO_INICIADO",
     "NO_LOGRADO": "EN_PROCESO",
     "EN_PROCESO": "EN_PROCESO",
     "LOGRADO": "LOGRADO"
@@ -54,11 +55,11 @@ export async function GET(request: Request) {
         const acreditacionState = getAcreditacionState(asignatura, nivel);
         const { e1_comprension, e2_aplicacion_paec, e3_argumentacion } = acreditacionState.evidencias_esgr;
 
-        // Determinar Estado del Propósito
+        // Determinar Estado del Propósito (Protocolo MVA)
         const isLogrado = e1_comprension && e2_aplicacion_paec && e3_argumentacion;
         const estadoProposito: "NO_INICIADO" | "EN_PROCESO" | "LOGRADO" = isLogrado
             ? "LOGRADO"
-            : "EN_PROCESO"; // Podría ser NO_INICIADO si no hay intentos, pero dejaremos EN_PROCESO por defecto si ya entró
+            : (e1_comprension || e2_aplicacion_paec || e3_argumentacion ? "EN_PROCESO" : "NO_INICIADO");
 
         // 4. LOGICA DE DECISIÓN ACADÉMICA (Motor de Decisiones)
         let decision: "AVANZA" | "RECUPERACION" | "BLOQUEADO" | "ACREDITA_NIVEL" = "AVANZA";
@@ -70,14 +71,12 @@ export async function GET(request: Request) {
                 decision = "ACREDITA_NIVEL";
                 accionSiguiente = "Nivel Completo: Descargar Certificado";
             } else {
-                decision = "AVANZA"; // Avanza al siguiente PF
+                decision = "AVANZA"; // AVANZA al siguiente ciclo
                 accionSiguiente = "Iniciar Siguiente Propósito Formativo";
             }
         } else {
-            // Si NO está logrado
-            // Lógica de Bloqueo/Recuperación (Placeholder normativa)
-            // Por ahora, si no está logrado, CONTINUA (AVANZA en la sesión actual)
-            decision = "AVANZA";
+            // Si NO está logrado (Caso MVA: BLOQUEO o CONTINUA)
+            decision = "AVANZA"; // AVANZA a la sesión recursiva
             accionSiguiente = "Continuar con la sesión de aprendizaje";
         }
 

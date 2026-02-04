@@ -138,9 +138,17 @@ export const advancePFIndex = (asignatura: string, nivel: string) => {
 
 export const resetAcademicState = (asignatura: string, nivel: string) => {
     const subjKey = getKey(asignatura);
-    if (academicStore.indexes[subjKey]) {
-        academicStore.indexes[subjKey][nivel] = 1;
-        console.log(`[RESET] Estado académico reiniciado para ${asignatura}-${nivel}`);
-    }
-    // También podríamos limpiar evidencias si fuera necesario, pero por ahora solo el índice es crítico.
+
+    // Reset Index
+    if (!academicStore.indexes[subjKey]) academicStore.indexes[subjKey] = {};
+    academicStore.indexes[subjKey][nivel] = 1;
+
+    // Wipe all evidences for this subject-nivel
+    Object.keys(academicStore.evidencias).forEach(key => {
+        if (key.startsWith(`${subjKey}-${nivel}-`)) {
+            delete academicStore.evidencias[key];
+        }
+    });
+
+    console.log(`[RESET] Limpieza Total de Estado para ${asignatura}-${nivel}`);
 };

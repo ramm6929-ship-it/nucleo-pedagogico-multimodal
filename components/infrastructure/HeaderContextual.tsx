@@ -28,9 +28,9 @@ const ASIGNATURA_CONFIG: Record<Asignatura, { nombre: string; icon: typeof BookO
         color: "text-blue-400",
     },
     CNEYT: {
-        nombre: "Cultura Digital",
-        icon: Cpu,
-        color: "text-purple-400",
+        nombre: "Ciencias Naturales, Experimentales y Tecnología",
+        icon: FlaskConical,
+        color: "text-teal-400",
     },
     FISICA: {
         nombre: "Física",
