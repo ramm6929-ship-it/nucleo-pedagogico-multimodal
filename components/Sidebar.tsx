@@ -22,7 +22,7 @@ export function Sidebar() {
             <div className="flex flex-1 flex-col overflow-y-auto py-4">
                 <nav className="flex-1 px-2 space-y-2">
                     {navigation.map((item) => {
-                        const isActive = pathname.startsWith(item.href);
+                        const isActive = pathname?.startsWith(item.href) ?? false;
                         return (
                             <Link
                                 key={item.name}

@@ -9,7 +9,7 @@
 export type Asignatura = "PM" | "PMI" | "CNEYT" | "FISICA";
 export type TipoEvidencia = "digital" | "captura_optica";
 export type EstadoProposito = "NO_INICIADO" | "EN_PROCESO" | "LOGRADO";
-export type ResultadoAcademico = "AVANZA" | "RECUPERACION" | "BLOQUEADO" | "ACREDITA_NIVEL";
+export type ResultadoAcademico = "AVANZA" | "RECUPERACION" | "BLOQUEADO" | "ACREDITA_NIVEL" | "CONTINUA";
 
 // === INTERFACES CONTRATO OBLIGATORIO ===
 

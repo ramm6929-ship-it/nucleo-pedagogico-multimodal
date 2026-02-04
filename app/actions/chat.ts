@@ -5,7 +5,6 @@ import { AIResponse, StatusUpdate, Asignatura } from "@/app/lib/types";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// 1. CONFIGURACIÓN
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -21,7 +20,7 @@ export async function processChat(
     try {
         console.log(`🚀 [NAI] Iniciando ciclo para usuario: ${userId}`);
 
-        // 2. RECUPERAR DATOS
+        // 1. RECUPERAR ESTADO
         const { data: estadoActual } = await supabase
             .from('avance_curricular')
             .select('*')
@@ -29,37 +28,37 @@ export async function processChat(
             .eq('asignatura', asignaturaSolicitada)
             .maybeSingle();
 
+        // DETECCIÓN DE ARRANQUE: ¿Es un usuario nuevo o en día 1?
+        const esArranque = !estadoActual || (estadoActual.dia_actual <= 1 && (!estadoActual.pf_acreditados || estadoActual.pf_acreditados.length === 0));
+
         const contexto = {
             dia: estadoActual?.dia_actual || 1,
             pf_actual: estadoActual?.proposito_formativo_actual || (asignaturaSolicitada === 'CNEYT' ? 'CNEYT-I-PF1' : 'PMI-I-PF1'),
             historial: estadoActual?.pf_acreditados || []
         };
 
-        // 3. PROMPT CON "PARCHE ANTI-BLOQUEO"
+        // 2. PROMPT
         const basePrompt = await getSystemPrompt();
 
-        const fullSystemInstruction = `
+        // Instrucción reforzada para evitar el bloqueo inicial
+        const instruccionContexto = `
         ${basePrompt}
 
-        === CONTEXTO DEL ESTUDIANTE ===
+        CONTEXTO ESTUDIANTE:
         ID: ${userId}
         Asignatura: ${asignaturaSolicitada}
-        PF Activo: ${contexto.pf_actual}
-        Historial: ${JSON.stringify(contexto.historial)}
-        ===============================
+        Historial Acreditado: ${JSON.stringify(contexto.historial)} (Si está vacío, es ALUMNO NUEVO).
         
-        !!! INSTRUCCIONES DE CONTROL DE FLUJO (PRIORITARIAS) !!!
-        1. Tu respuesta DEBE ser un JSON válido (StatusUpdate).
-        2. REGLA DE SESIÓN ACTIVA: Si el estudiante está trabajando en el Propósito Formativo actual, el estado es "CONTINUA".
-        3. NO uses "BLOQUEADO" para sesiones normales. "BLOQUEADO" es EXCLUSIVO para intentos de saltar a un Nivel superior sin acreditar el anterior.
-        4. Si es el primer mensaje ("Hola"), responde con bienvenida y estado "CONTINUA".
-        5. Es OBLIGATORIO incluir el objeto "acreditacion".
+        REGLA DE INICIO:
+        Si el historial está vacío, ESTÁ AUTORIZADO A INICIAR.
+        Define "decision_academica": { "resultado": "CONTINUA", "accion_siguiente": "Bienvenida" }.
+        NO USES "BLOQUEADO" EN EL PRIMER MENSAJE.
         `;
 
-        // 4. INVOCACIÓN GEMINI 2.5 FLASH
+        // 3. GEMINI 2.5 FLASH
         const model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash",
-            systemInstruction: fullSystemInstruction,
+            systemInstruction: instruccionContexto,
             generationConfig: {
                 temperature: 0.1,
                 responseMimeType: "application/json"
@@ -69,26 +68,56 @@ export async function processChat(
         const result = await model.generateContent(userMessage);
         const responseText = result.response.text();
 
-        // 5. PARSEO
+        // 4. PARSEO
         let statusUpdate: StatusUpdate;
         try {
             statusUpdate = JSON.parse(responseText);
-            // --- LOG CRÍTICO: VER EL CEREBRO DE LA IA ---
-            console.log("🧠 NAI DECISIÓN (JSON):", JSON.stringify(statusUpdate.decision_academica));
-            // -------------------------------------------
         } catch (e) {
-            console.error("🔥 Error JSON Gemini:", responseText);
-            throw new Error("Error de Integridad: La IA no entregó un formato válido.");
+            console.error("🔥 JSON Roto, creando fallback.");
+            statusUpdate = {
+                asignatura_activa: asignaturaSolicitada,
+                nivel: "I",
+                dia_actual: 1,
+                proposito_formativo_id: contexto.pf_actual,
+                proposito_formativo_actual: contexto.pf_actual,
+                proposito_formativo_siguiente: null,
+                evaluacion_evidencia: { tipo: "digital", rubrica_version: "v1", comentario_portafolio: "", validada_por_docente: false },
+                acreditacion: { estado_proposito: "EN_PROCESO", elegible_recuperacion: false },
+                decision_academica: { resultado: "CONTINUA", accion_siguiente: "Recuperación" }
+            } as any;
         }
 
+        // =====================================================================
+        // 🛡️ PORTERO DE ARRANQUE (AQUÍ ESTÁ LA SOLUCIÓN AL BLOQUEO)
+        // =====================================================================
+
+        // Si detectamos que es el inicio (esArranque) Y la IA mandó BLOQUEADO o undefined...
+        // ... NOSOTROS (el Backend) anulamos la orden y abrimos la puerta.
+
+        if (esArranque) {
+            if (!statusUpdate.decision_academica || statusUpdate.decision_academica.resultado === "BLOQUEADO") {
+                console.warn("⚠️ CORRIGIENDO BLOQUEO FALSO EN ARRANQUE. Forzando CONTINUA.");
+
+                statusUpdate.decision_academica = {
+                    resultado: "CONTINUA",  // <--- LA LLAVE MAESTRA
+                    accion_siguiente: "Bienvenida al curso (Acceso Autorizado por Sistema)"
+                };
+
+                // Aseguramos que el día sea 1
+                statusUpdate.dia_actual = 1;
+            }
+        }
+        // =====================================================================
+
+        console.log("🧠 DECISIÓN FINAL:", statusUpdate.decision_academica?.resultado);
+
+        // 5. EXTRACCIÓN TEXTO
         const textoRespuesta = (statusUpdate as any).mensaje_usuario ||
             (statusUpdate as any).comentario_pedagogico ||
             statusUpdate.decision_academica?.accion_siguiente ||
-            "Continúa con la actividad.";
+            "Bienvenido al curso.";
 
         // 6. PERSISTENCIA
-
-        // A) Sesión
         const { data: sesion } = await supabase
             .from('sesiones_aprendizaje')
             .insert({
@@ -103,7 +132,6 @@ export async function processChat(
             .select()
             .single();
 
-        // B) Evidencia
         if (sesion && statusUpdate.evaluacion_evidencia?.tipo) {
             const { data: portafolio } = await supabase.from('portafolios').select('id').eq('estudiante_id', userId).maybeSingle();
             let portafolioId = portafolio?.id;
@@ -124,10 +152,9 @@ export async function processChat(
             }
         }
 
-        // C) Actualización Curricular
+        // Avance
         const estadoLogro = statusUpdate.acreditacion?.estado_proposito || "EN_PROCESO";
         const pfActual = statusUpdate.proposito_formativo_actual || contexto.pf_actual;
-
         const nuevosAcreditados = estadoLogro === "LOGRADO"
             ? Array.from(new Set([...contexto.historial, pfActual]))
             : contexto.historial;
@@ -147,19 +174,19 @@ export async function processChat(
         };
 
     } catch (error: any) {
-        console.error("❌ Error processChat:", error);
+        console.error("❌ Error Fatal:", error);
         return {
-            answer: "Error de conexión con el Núcleo. Intenta de nuevo.",
+            answer: "Error de conexión. Intenta de nuevo.",
             status_update: {
                 asignatura_activa: asignaturaSolicitada,
                 nivel: "I",
-                dia_actual: 0,
+                dia_actual: 1,
                 proposito_formativo_id: "ERR",
                 proposito_formativo_actual: "ERR",
                 proposito_formativo_siguiente: null,
                 evaluacion_evidencia: { tipo: "digital", rubrica_version: "v1", comentario_portafolio: "", validada_por_docente: false },
                 acreditacion: { estado_proposito: "EN_PROCESO", elegible_recuperacion: false },
-                decision_academica: { resultado: "BLOQUEADO", accion_siguiente: "Reintentar" }
+                decision_academica: { resultado: "CONTINUA", accion_siguiente: "Reinicio" }
             }
         };
     }
