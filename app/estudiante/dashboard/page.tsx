@@ -69,7 +69,6 @@ function DashboardContent() {
         if (!statusUpdate?.decision_academica) return;
 
         const resultado = statusUpdate.decision_academica.resultado;
-        const activeSubject = statusUpdate.asignatura_activa; // Define activeSubject here
 
         if (resultado === "AVANZA") {
             router.push(`/estudiante/sesion?asignatura=${statusUpdate.asignatura_activa || "PMI"}&nivel=${statusUpdate.nivel || "I"}`);
@@ -77,6 +76,10 @@ function DashboardContent() {
             router.push(`/estudiante/recuperacion?asignatura=${statusUpdate.asignatura_activa || "PMI"}&nivel=${statusUpdate.nivel || "I"}`);
         } else if (resultado === "BLOQUEADO") {
             router.push(`/estudiante/bloqueo?asignatura=${statusUpdate.asignatura_activa || "PMI"}&nivel=${statusUpdate.nivel || "I"}`);
+        } else if (resultado === "ACREDITA_NIVEL") {
+            // Acción para descarga de certificado o celebración de fin de nivel
+            alert("¡Felicidades! Has acreditado el nivel. Tu certificado se está generando...");
+            // Podríamos redirigir a una pantalla de éxito real
         }
     };
 

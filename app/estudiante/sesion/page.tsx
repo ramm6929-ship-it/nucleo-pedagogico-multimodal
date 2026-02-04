@@ -49,30 +49,18 @@ function SesionContent() {
 
         setIsAuthorized(true);
 
-        // 3. Inicializar Estado (Simulación de carga de estado desde el dashboard)
-        const initialStatus: StatusUpdate = {
-            asignatura_activa: activeSubject as any,
-            nivel: "I", // Inyectado desde el contexto
-            dia_actual: 15,
-            proposito_formativo_id: "PMI-I-PF1",
-            proposito_formativo_actual: "PMI-I-PF1",
-            proposito_formativo_siguiente: "PMI-I-PF2",
-            evaluacion_evidencia: {
-                tipo: "digital",
-                rubrica_version: "v1.0",
-                comentario_portafolio: "",
-                validada_por_docente: false,
-            },
-            acreditacion: {
-                estado_proposito: "EN_PROCESO",
-                elegible_recuperacion: false,
-            },
-            decision_academica: {
-                resultado: "AVANZA",
-                accion_siguiente: "Continuar con la sesión",
-            },
+        // 3. Inicialización Estado Dinámico (SSOT del Backend)
+        const fetchState = async () => {
+            try {
+                const res = await fetch(`/api/status_update?asignatura=${activeSubject}&nivel=I`);
+                if (!res.ok) throw new Error("Error loading session state");
+                const data = await res.json();
+                setStatusUpdate(data);
+            } catch (err) {
+                console.error("Failed to fetch initial session state", err);
+            }
         };
-        setStatusUpdate(initialStatus);
+        fetchState();
     }, [asignaturaParam, router]);
 
     const handleSendMessage = useCallback(async (messageText: string) => {
@@ -101,21 +89,9 @@ function SesionContent() {
             };
             setMessages((prev) => [...prev, aiMessage]);
 
-            // Actualizar solo estados permitidos (no el PF)
+            // Actualizar solo estados permitidos (Respetando SSOT del backend)
             if (response.status_update) {
-                // 🛡️ GUARDA DE COHERENCIA NORMATIVA DUAL (Executive Order 04)
-                const newPF = response.status_update.proposito_formativo_id;
-                const prog = response.status_update.asignatura_activa;
-                const niv = response.status_update.nivel;
-
-                if (newPF && prog && niv && !newPF.startsWith(`${prog}-${niv}-`)) {
-                    console.error(`[NORMATIVA] Discrepancia crítica Programa/Nivel: ${prog}-${niv} vs ${newPF}`);
-                }
-
-                setStatusUpdate(prev => ({
-                    ...response.status_update,
-                    proposito_formativo_id: prev!.proposito_formativo_id // Blindaje de PF
-                }));
+                setStatusUpdate(response.status_update);
             }
         } catch (error) {
             console.error("Error:", error);
