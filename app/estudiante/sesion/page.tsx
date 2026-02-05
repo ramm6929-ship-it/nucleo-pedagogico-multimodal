@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 import { AppShell } from "@/components/infrastructure/AppShell";
 import { SesionAprendizajePanel } from "@/components/estudiante/SesionAprendizajePanel";
 import type { StatusUpdate } from "@/app/lib/types";
@@ -22,6 +23,12 @@ interface Message {
     content: string;
 }
 
+// Cliente Supabase para Frontend
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
 function SesionContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -31,26 +38,36 @@ function SesionContent() {
     const [isLoading, setIsLoading] = useState(false);
     const [isAuthorized, setIsAuthorized] = useState(false);
     const [statusUpdate, setStatusUpdate] = useState<StatusUpdate | null>(null);
+    const [userId, setUserId] = useState<string | null>(null);
 
     useEffect(() => {
-        // 1. Guard de Rol: Solo Estudiante
-        const role = localStorage.getItem("nai_session_role");
-        if (role !== "estudiante") {
-            router.replace("/");
-            return;
-        }
+        const initSession = async () => {
+            // 1. Guard de Rol: Solo Estudiante
+            const role = localStorage.getItem("nai_session_role");
+            if (role !== "estudiante") {
+                router.replace("/");
+                return;
+            }
 
-        // 2. Resolver Asignatura y PF Inmutable
-        const activeSubject = asignaturaParam || localStorage.getItem("nai_active_subject");
-        if (!activeSubject) {
-            router.replace("/estudiante");
-            return;
-        }
+            // 2. Obtener usuario autenticado
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                console.error("⚠️ Usuario no autenticado");
+                router.replace("/login");
+                return;
+            }
+            setUserId(user.id);
 
-        setIsAuthorized(true);
+            // 3. Resolver Asignatura y PF Inmutable
+            const activeSubject = asignaturaParam || localStorage.getItem("nai_active_subject");
+            if (!activeSubject) {
+                router.replace("/estudiante");
+                return;
+            }
 
-        // 3. Inicialización Estado Dinámico (SSOT del Backend)
-        const fetchState = async () => {
+            setIsAuthorized(true);
+
+            // 4. Inicialización Estado Dinámico (SSOT del Backend)
             try {
                 const res = await fetch(`/api/status_update?asignatura=${activeSubject}&nivel=I`);
                 if (!res.ok) throw new Error("Error loading session state");
@@ -60,11 +77,12 @@ function SesionContent() {
                 console.error("Failed to fetch initial session state", err);
             }
         };
-        fetchState();
+
+        initSession();
     }, [asignaturaParam, router]);
 
     const handleSendMessage = useCallback(async (messageText: string) => {
-        if (!statusUpdate) return;
+        if (!statusUpdate || !userId) return;
 
         const userMessage: Message = {
             id: Date.now().toString(),
@@ -75,10 +93,10 @@ function SesionContent() {
         setIsLoading(true);
 
         try {
-            // PF se envía explícitamente para asegurar INMUTABILIDAD en el backend
+            // CORRECCIÓN: Llamar processChat con la firma correcta (message, userId, asignatura)
             const response = await processChat(
                 messageText,
-                messages,
+                userId,
                 statusUpdate.asignatura_activa as any
             );
 
@@ -98,7 +116,7 @@ function SesionContent() {
         } finally {
             setIsLoading(false);
         }
-    }, [messages, statusUpdate]);
+    }, [userId, statusUpdate]);
 
     if (!isAuthorized || !statusUpdate) return null;
 
