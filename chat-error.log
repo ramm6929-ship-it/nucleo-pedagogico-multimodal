@@ -1,0 +1,31 @@
+[2026-02-05T15:53:23.470Z] CHAT FATAL: Error: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash
+Please retry in 37.980971942s. [{"@type":"type.googleapis.com/google.rpc.Help","links":[{"description":"Learn more about Gemini API quotas","url":"https://ai.google.dev/gemini-api/docs/rate-limits"}]},{"@type":"type.googleapis.com/google.rpc.QuotaFailure","violations":[{"quotaMetric":"generativelanguage.googleapis.com/generate_content_free_tier_requests","quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier","quotaDimensions":{"model":"gemini-2.5-flash","location":"global"},"quotaValue":"20"}]},{"@type":"type.googleapis.com/google.rpc.RetryInfo","retryDelay":"37s"}]
+Stack: Error: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash
+Please retry in 37.980971942s. [{"@type":"type.googleapis.com/google.rpc.Help","links":[{"description":"Learn more about Gemini API quotas","url":"https://ai.google.dev/gemini-api/docs/rate-limits"}]},{"@type":"type.googleapis.com/google.rpc.QuotaFailure","violations":[{"quotaMetric":"generativelanguage.googleapis.com/generate_content_free_tier_requests","quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier","quotaDimensions":{"model":"gemini-2.5-flash","location":"global"},"quotaValue":"20"}]},{"@type":"type.googleapis.com/google.rpc.RetryInfo","retryDelay":"37s"}]
+    at handleResponseNotOk (C:\Users\MFRM\nucleo-pedagogico-multimodal\.next\dev\server\chunks\node_modules_a8bce123._.js:8968:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async makeRequest (C:\Users\MFRM\nucleo-pedagogico-multimodal\.next\dev\server\chunks\node_modules_a8bce123._.js:8940:9)
+    at async generateContent (C:\Users\MFRM\nucleo-pedagogico-multimodal\.next\dev\server\chunks\node_modules_a8bce123._.js:9382:22)
+    at async processChat (C:\Users\MFRM\nucleo-pedagogico-multimodal\.next\dev\server\chunks\[root-of-the-server]__3dcd963c._.js:1894:24)
+    at async GET (C:\Users\MFRM\nucleo-pedagogico-multimodal\.next\dev\server\chunks\[root-of-the-server]__3dcd963c._.js:2060:26)
+    at async AppRouteRouteModule.do (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (C:\Users\MFRM\nucleo-pedagogico-multimodal\.next\dev\server\chunks\node_modules_next_937e52f3._.js:14890:38)
+    at async AppRouteRouteModule.handleResponse (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (C:\Users\MFRM\nucleo-pedagogico-multimodal\.next\dev\server\chunks\node_modules_next_937e52f3._.js:14953:32)
+    at async Module.handler (C:\Users\MFRM\nucleo-pedagogico-multimodal\.next\dev\server\chunks\node_modules_next_937e52f3._.js:15006:13)
+    at async DevServer.renderToResponseWithComponentsImpl (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\server\base-server.js:1422:9)
+    at async DevServer.renderPageComponent (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\server\base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\server\base-server.js:1524:32)
+    at async DevServer.pipeImpl (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\server\base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\server\next-server.js:395:17)
+    at async DevServer.handleRequestImpl (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\server\base-server.js:909:17)
+    at async C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\server\dev\next-dev-server.js:387:20
+    at async Span.traceAsyncFn (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\server\dev\next-dev-server.js:383:24)
+    at async invokeRender (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\server\lib\router-server.js:248:21)
+    at async handleRequest (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\server\lib\router-server.js:447:24)
+    at async requestHandlerImpl (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\server\lib\router-server.js:496:13)
+    at async Server.requestListener (C:\Users\MFRM\nucleo-pedagogico-multimodal\node_modules\next\dist\server\lib\start-server.js:226:13)

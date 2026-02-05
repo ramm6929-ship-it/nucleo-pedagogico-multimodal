@@ -199,6 +199,12 @@ export async function processChat(
 
     } catch (error: any) {
         console.error("❌ Error Fatal:", error);
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            fs.appendFileSync(path.join(process.cwd(), 'chat-error.log'), `[${new Date().toISOString()}] CHAT FATAL: ${String(error)}\nStack: ${error?.stack}\n`);
+        } catch (e) { console.error("Error logging to file", e); }
+
         return {
             answer: "Error de conexión. Intenta de nuevo.",
             status_update: {

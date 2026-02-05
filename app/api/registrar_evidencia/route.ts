@@ -28,6 +28,20 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, error: "Se requiere evidencia visual válida para análisis MVA." }, { status: 400 });
         }
 
+        // 1.5 VALIDACIÓN DE SEGURIDAD (TOKEN SAFETY)
+        // Evitamos enviar basura a Gemini.
+        const { validateImageFile } = require("@/app/lib/file-validation");
+        const validation = await validateImageFile(file);
+
+        if (!validation.isValid) {
+            console.warn(`[UPLOAD BLOCKED] Archivo rechazado: ${validation.error}`);
+            return NextResponse.json({
+                success: false,
+                error: validation.error,
+                bloqueo_seguridad: true
+            }, { status: 400 });
+        }
+
         // 2. Persistencia de Archivo (Sin exponer detalles de sistema en error)
         const filename = `evidence-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`; // Sanitización estricta de nombre
         const uploadDir = join(process.cwd(), "public", "uploads");
