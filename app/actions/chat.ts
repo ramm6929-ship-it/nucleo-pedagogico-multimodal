@@ -4,6 +4,7 @@ import { getSystemPrompt } from "@/app/lib/nai";
 import { AIResponse, StatusUpdate, Asignatura } from "@/app/lib/types";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generarContextoBFF } from "@/app/lib/canonical-pf-data";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -31,29 +32,46 @@ export async function processChat(
         // DETECCIÓN DE ARRANQUE: Solo si no hay registro previo de avance
         const esArranque = !estadoActual;
 
+        // Determinar nivel actual (por ahora siempre I, en el futuro será dinámico)
+        const nivelActual = "I";
+
         const contexto = {
             dia: estadoActual?.dia_actual || 1,
             pf_actual: estadoActual?.proposito_formativo_actual || (asignaturaSolicitada === 'CNEYT' ? 'CNEYT-I-PF1' : 'PMI-I-PF1'),
             historial: estadoActual?.pf_acreditados || []
         };
 
-        // 2. PROMPT
+        // 2. PROMPT BASE + CONTEXTO BFF
         const basePrompt = await getSystemPrompt();
 
-        // Instrucción reforzada para evitar el bloqueo inicial
+        // Generar el contexto curricular BFF con el texto oficial del PF
+        const contextoBFF = generarContextoBFF(asignaturaSolicitada, nivelActual, contexto.pf_actual);
+        console.log(`📚 [BFF] Contexto inyectado para: ${contexto.pf_actual}`);
+
+        // Instrucción reforzada con contexto BFF
         const instruccionContexto = `
         ${basePrompt}
+
+        ${contextoBFF}
 
         CONTEXTO ESTUDIANTE:
         ID: ${userId}
         Asignatura: ${asignaturaSolicitada}
+        Nivel: ${nivelActual}
+        Propósito Formativo Activo: ${contexto.pf_actual}
         Historial Acreditado: ${JSON.stringify(contexto.historial)} (Si está vacío, es ALUMNO NUEVO).
         
         REGLA DE INICIO:
         Si el historial está vacío, ESTÁ AUTORIZADO A INICIAR.
         Define "decision_academica": { "resultado": "CONTINUA", "accion_siguiente": "Bienvenida" }.
         NO USES "BLOQUEADO" EN EL PRIMER MENSAJE.
+        
+        RECORDATORIO BFF CRÍTICO:
+        - USA EXCLUSIVAMENTE el texto del Propósito Formativo que aparece en el CONTEXTO CURRICULAR BFF arriba.
+        - NO parafrasees, NO modifiques, NO resumas el texto del PF.
+        - TODAS tus preguntas y ejemplos deben relacionarse con los Contenidos Formativos listados.
         `;
+
 
         // 3. GEMINI 2.5 FLASH
         const model = genAI.getGenerativeModel({
