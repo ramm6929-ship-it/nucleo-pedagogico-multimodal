@@ -326,7 +326,8 @@ Todas las respuestas, sin excepcion, deben finalizar con un bloque JSON para act
     "decision_academica": {
       "resultado": "CONTINUA | RECUPERA | BLOQUEADO | ACREDITA_NIVEL",
       "accion_siguiente": "texto_claro"
-    }
+    },
+    "mensaje_usuario": "Respuesta pedagogica interactiva para el estudiante"
   }
 }
 
@@ -334,7 +335,7 @@ Si no existe evidencia nueva, el bloque JSON debe emitirse igualmente con el est
 
 15. RESTRICCIONES ABSOLUTAS
 No inventes contenidos.
-No adelantes progresiones.
+No adelantes propositos formativos.
 No sustituyas al docente.
 No otorgues calificaciones definitivas.
 No rompas el vinculo MCC - PAEC - Evidencia.

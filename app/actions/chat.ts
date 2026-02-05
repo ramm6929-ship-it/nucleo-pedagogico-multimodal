@@ -88,25 +88,28 @@ export async function processChat(
         }
 
         // =====================================================================
-        // 🛡️ PORTERO DE ARRANQUE (AQUÍ ESTÁ LA SOLUCIÓN AL BLOQUEO)
+        // 🛡️ PROTECTOR DE ESTADO Y ARRANQUE (AUDITORÍA DE REDIRECCIÓN)
         // =====================================================================
 
-        // Si detectamos que es el inicio (esArranque) Y la IA mandó BLOQUEADO o undefined...
-        // ... NOSOTROS (el Backend) anulamos la orden y abrimos la puerta.
-
+        // 1. Portero de Arranque: Evita bloqueos falsos al inicio
         if (esArranque) {
             if (!statusUpdate.decision_academica || statusUpdate.decision_academica.resultado === "BLOQUEADO") {
                 console.warn("⚠️ CORRIGIENDO BLOQUEO FALSO EN ARRANQUE. Forzando CONTINUA.");
 
-                statusUpdate.decision_academica = {
-                    resultado: "CONTINUA",  // <--- LA LLAVE MAESTRA
-                    accion_siguiente: "Bienvenida al curso (Acceso Autorizado por Sistema)"
-                };
+                // Conservamos el mensaje de la IA si existe, de lo contrario usamos el saludo sistémico
+                const mAI = (statusUpdate as any).mensaje_usuario || statusUpdate.decision_academica?.accion_siguiente;
 
-                // Aseguramos que el día sea 1
+                statusUpdate.decision_academica = {
+                    resultado: "CONTINUA",
+                    accion_siguiente: mAI || "Bienvenida al curso (Acceso Autorizado por Sistema)"
+                };
                 statusUpdate.dia_actual = 1;
             }
         }
+
+        // 2. Fix de Redirección: Forzamos persistencia de la asignatura y nivel
+        statusUpdate.asignatura_activa = asignaturaSolicitada;
+        statusUpdate.nivel = "I";
         // =====================================================================
 
         console.log("🧠 DECISIÓN FINAL:", statusUpdate.decision_academica?.resultado);

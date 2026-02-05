@@ -41,7 +41,7 @@ export default function LoginPage() {
                 // REGISTRO con Supabase Auth
                 const { data, error: signUpError } = await supabase.auth.signUp({
                     email: email.trim(),
-                    password: password.trim(),
+                    password: password,
                 });
 
                 if (signUpError) {
@@ -60,7 +60,7 @@ export default function LoginPage() {
                 // LOGIN con Supabase Auth
                 const { data, error: authError } = await supabase.auth.signInWithPassword({
                     email: email.trim(),
-                    password: password.trim(),
+                    password: password,
                 });
 
                 if (authError) {
@@ -115,8 +115,8 @@ export default function LoginPage() {
                         type="button"
                         onClick={() => setIsRegisterMode(false)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${!isRegisterMode
-                                ? "bg-white text-black"
-                                : "bg-white/5 text-slate-500 hover:bg-white/10"
+                            ? "bg-white text-black"
+                            : "bg-white/5 text-slate-500 hover:bg-white/10"
                             }`}
                     >
                         <LogIn className="h-4 w-4" />
@@ -126,8 +126,8 @@ export default function LoginPage() {
                         type="button"
                         onClick={() => setIsRegisterMode(true)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${isRegisterMode
-                                ? "bg-teal-500 text-white"
-                                : "bg-white/5 text-slate-500 hover:bg-white/10"
+                            ? "bg-teal-500 text-white"
+                            : "bg-white/5 text-slate-500 hover:bg-white/10"
                             }`}
                     >
                         <UserPlus className="h-4 w-4" />
@@ -195,8 +195,8 @@ export default function LoginPage() {
                             type="submit"
                             disabled={isLoading}
                             className={`w-full font-bold py-4 rounded-2xl transition-all flex items-center justify-center disabled:opacity-50 text-sm active:scale-95 ${isRegisterMode
-                                    ? "bg-teal-500 text-white hover:bg-teal-400"
-                                    : "bg-white text-black hover:bg-blue-400"
+                                ? "bg-teal-500 text-white hover:bg-teal-400"
+                                : "bg-white text-black hover:bg-blue-400"
                                 }`}
                         >
                             {isLoading ? (
