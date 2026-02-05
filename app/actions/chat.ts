@@ -28,8 +28,8 @@ export async function processChat(
             .eq('asignatura', asignaturaSolicitada)
             .maybeSingle();
 
-        // DETECCIÓN DE ARRANQUE: ¿Es un usuario nuevo o en día 1?
-        const esArranque = !estadoActual || (estadoActual.dia_actual <= 1 && (!estadoActual.pf_acreditados || estadoActual.pf_acreditados.length === 0));
+        // DETECCIÓN DE ARRANQUE: Solo si no hay registro previo de avance
+        const esArranque = !estadoActual;
 
         const contexto = {
             dia: estadoActual?.dia_actual || 1,
@@ -71,7 +71,9 @@ export async function processChat(
         // 4. PARSEO
         let statusUpdate: StatusUpdate;
         try {
-            statusUpdate = JSON.parse(responseText);
+            const parsed = JSON.parse(responseText);
+            // Manejar si viene envuelto en status_update o no
+            statusUpdate = parsed.status_update || parsed;
         } catch (e) {
             console.error("🔥 JSON Roto, creando fallback.");
             statusUpdate = {
@@ -92,11 +94,11 @@ export async function processChat(
         // =====================================================================
 
         // 1. Portero de Arranque: Evita bloqueos falsos al inicio
+        // Solo actúa si es REALMENTE la primera vez (estadoActual null)
         if (esArranque) {
             if (!statusUpdate.decision_academica || statusUpdate.decision_academica.resultado === "BLOQUEADO") {
                 console.warn("⚠️ CORRIGIENDO BLOQUEO FALSO EN ARRANQUE. Forzando CONTINUA.");
 
-                // Conservamos el mensaje de la IA si existe, de lo contrario usamos el saludo sistémico
                 const mAI = (statusUpdate as any).mensaje_usuario || statusUpdate.decision_academica?.accion_siguiente;
 
                 statusUpdate.decision_academica = {
@@ -115,10 +117,11 @@ export async function processChat(
         console.log("🧠 DECISIÓN FINAL:", statusUpdate.decision_academica?.resultado);
 
         // 5. EXTRACCIÓN TEXTO
+        // Buscamos el mensaje pedagógico en orden de prioridad
         const textoRespuesta = (statusUpdate as any).mensaje_usuario ||
             (statusUpdate as any).comentario_pedagogico ||
             statusUpdate.decision_academica?.accion_siguiente ||
-            "Bienvenido al curso.";
+            "¡Hola! Soy tu asistente pedagógico. ¿En qué puedo ayudarte hoy?";
 
         // 6. PERSISTENCIA
         const { data: sesion } = await supabase
